@@ -10,6 +10,7 @@ from agents import (
     set_default_openai_client,
     set_tracing_disabled,
 )
+from jinja2 import Environment, FileSystemLoader
 
 from rose_cli.utils import get_async_client
 
@@ -56,9 +57,9 @@ def list_files(ctx: RunContextWrapper[Any], directory: str = ".") -> str:
             files = []
             for item in path.iterdir():
                 if item.is_file():
-                    files.append(f"📄 {item.name}")
+                    files.append(f"{item.name}")
                 elif item.is_dir():
-                    files.append(f"📁 {item.name}/")
+                    files.append(f"{item.name}/")
 
             if files:
                 return f"Files in {path}:\n" + "\n".join(sorted(files))
@@ -79,18 +80,18 @@ class FileReaderActor:
         set_tracing_disabled(True)
         set_default_openai_api("responses")
 
-        instructions = """You are a helpful file system assistant.
+        # Load instructions from Jinja template
+        template_dir = Path(__file__).parent
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("instructions.jinja2")
 
-        You can:
-        1. Read file contents using the read_file function
-        2. List files in directories using the list_files function
+        # Prepare tool information for the template
+        tools_info = [
+            {"name": "read_file", "description": "Read the contents of a file"},
+            {"name": "list_files", "description": "List files in a directory"},
+        ]
 
-        When users ask about files:
-        - If they want to see what's in a directory, use list_files
-        - If they want to read a specific file, use read_file
-        - Always provide clear feedback about what you found
-        - Be careful with file paths and handle errors gracefully
-        """
+        instructions = template.render(tools=tools_info)
 
         self.agent = Agent(
             name="FileReader",

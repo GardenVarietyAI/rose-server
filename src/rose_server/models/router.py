@@ -18,7 +18,7 @@ from rose_server.models.store import (
     get as get_language_model,
     list_all,
 )
-from rose_server.schemas.models import CreateModelRequest
+from rose_server.schemas.models import ModelCreateRequest
 
 router = APIRouter(prefix="/v1")
 logger = logging.getLogger(__name__)
@@ -83,26 +83,6 @@ async def get_model_details(model_id: str) -> JSONResponse:
     )
 
 
-@router.post("/models/{model_name}/download")
-async def download_model(model_name: str) -> JSONResponse:
-    """Pre-download a model to avoid blocking during inference."""
-    model = await get_language_model(model_name)
-    if not model:
-        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
-
-    try:
-        return JSONResponse(
-            content={
-                "status": "downloading",
-                "message": f"Model '{model_name}' download started in background",
-                "model": model_name,
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error downloading model: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to download model: {str(e)}")
-
-
 @router.delete("/models/{model}")
 async def delete_model(model: str) -> JSONResponse:
     """Delete a fine-tuned model."""
@@ -148,7 +128,7 @@ async def delete_model(model: str) -> JSONResponse:
 
 
 @router.post("/models", status_code=201)
-async def create_model(request: CreateModelRequest) -> Dict[str, Any]:
+async def create_model(request: ModelCreateRequest) -> Dict[str, Any]:
     """Create a new model configuration."""
     # Check if model already exists
     existing = await get_language_model(request.id)
